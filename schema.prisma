@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  githubId  String   @unique
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  plan      Plan     @default(FREE)
+  agents    Agent[]
+  repos     Repository[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Repository {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  githubUrl     String
+  defaultBranch String   @default("main")
+  lastSynced    DateTime?
+  agents        Agent[]
+  createdAt     DateTime @default(now())
+}
+
+model Agent {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  repositoryId    String?
+  repository      Repository? @relation(fields: [repositoryId], references: [id])
+  status          AgentStatus @default(QUEUED)
+  taskDescription String
+  branch          String?
+  result          String?
+  prUrl           String?
+  iterations      Int         @default(0)
+  maxIterations   Int         @default(25)
+  logs            AgentLog[]
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime    @default(now())
+}
+
+model AgentLog {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type      LogType
+  content   String
+  metadata  Json?
+  timestamp DateTime @default(now())
+}
+
+enum Plan {
+  FREE
+  PRO
+  TEAM
+}
+
+enum AgentStatus {
+  QUEUED
+  RUNNING
+  WAITING_FOR_USER
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum LogType {
+  STDOUT
+  STDERR
+  TOOL_CALL
+  TOOL_RESULT
+  REASONING
+  ERROR
+}
